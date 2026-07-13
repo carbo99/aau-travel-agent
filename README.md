@@ -8,7 +8,6 @@ some tools (weather, distance, hotels, budget), calls them, and writes an answer
 The model runs locally with Ollama. There is also a memory of the conversation, an
 N8N workflow, and everything runs in Docker.
 
-Group: Alessandro Carboni, Jean Veillerot
 
 ## What you need
 
