@@ -1,0 +1,95 @@
+{
+  "name": "Travel Agent Webhook",
+  "nodes": [
+    {
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "travel-agent",
+        "responseMode": "responseNode",
+        "options": {}
+      },
+      "id": "0f645cbb-036b-42f9-b1a9-6054989d137e",
+      "name": "Webhook",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 1,
+      "position": [
+        -16,
+        -16
+      ],
+      "webhookId": "travel-agent-webhook"
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "http://127.0.0.1:8000/chat",
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={\n  \"session_id\": \"{{ $json.body.session_id || 'n8n' }}\",\n  \"message\": \"{{ $json.body.message }}\"\n}",
+        "options": {
+          "timeout": 180000
+        }
+      },
+      "id": "c562868b-eb04-4407-b052-53a44a2c0f76",
+      "name": "Call Agent API",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        272,
+        -16
+      ]
+    },
+    {
+      "parameters": {
+        "respondWith": "json",
+        "responseBody": "={{ $json }}",
+        "options": {}
+      },
+      "id": "a5c031a5-d7f3-485d-b45a-5d03236fb426",
+      "name": "Respond to Webhook",
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1,
+      "position": [
+        544,
+        -16
+      ]
+    }
+  ],
+  "pinData": {},
+  "connections": {
+    "Webhook": {
+      "main": [
+        [
+          {
+            "node": "Call Agent API",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Call Agent API": {
+      "main": [
+        [
+          {
+            "node": "Respond to Webhook",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": false,
+  "settings": {
+    "executionOrder": "v1",
+    "binaryMode": "separate",
+    "availableInMCP": false
+  },
+  "versionId": "fc055d4d-69b0-4741-830d-b3d7682e967c",
+  "meta": {
+    "instanceId": "2af50cd74d7b1fd8cce5c0c9d29244b39a6f8018b88b81f32bd11d7bca6695ad"
+  },
+  "nodeGroups": [],
+  "id": "5I7hVXgpWLdl0Ita",
+  "tags": []
+}

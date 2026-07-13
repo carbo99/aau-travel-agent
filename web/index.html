@@ -1,0 +1,127 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>Travel Agent - Demo UI</title>
+<style>
+  body { font-family: -apple-system, Arial, sans-serif; max-width: 720px; margin: 30px auto; background: #f4f4f4; }
+  h1 { font-size: 20px; }
+  #chat { background: white; border-radius: 8px; padding: 15px; height: 400px; overflow-y: auto; border: 1px solid #ddd; }
+  .msg { margin: 10px 0; padding: 10px 12px; border-radius: 8px; max-width: 85%; white-space: pre-wrap; }
+  .user { background: #2563eb; color: white; margin-left: auto; }
+  .bot { background: #e5e7eb; color: #111; }
+  .meta { font-size: 11px; color: #666; margin-top: 4px; }
+  .row { display: flex; gap: 8px; margin-top: 10px; align-items: center; }
+  input, select { padding: 9px; border-radius: 6px; border: 1px solid #ccc; }
+  #input { flex: 1; }
+  button { padding: 10px 16px; border: none; border-radius: 6px; background: #2563eb; color: white; cursor: pointer; }
+  button:disabled { background: #999; }
+  #sid { width: 110px; }
+  .config { font-size: 13px; color: #444; background: #fff; padding: 10px; border-radius: 8px; border: 1px solid #ddd; margin-bottom: 10px; }
+  #url { flex: 1; font-size: 12px; }
+</style>
+</head>
+<body>
+
+<h1>Travel Planning Agent - demo</h1>
+
+<div class="config">
+  <div class="row">
+    <label>mode:</label>
+    <select id="mode" onchange="onModeChange()">
+      <option value="api">Direct API (localhost:8000)</option>
+      <option value="n8n">N8N webhook</option>
+    </select>
+    <label>session: <input id="sid" value="demo"></label>
+  </div>
+  <div class="row">
+    <label>url:</label>
+    <input id="url" value="http://localhost:8000/chat">
+  </div>
+</div>
+
+<div id="chat"></div>
+
+<div class="row">
+  <input id="input" placeholder="Plan a 3-day trip to Vienna from Klagenfurt under 500 euro" onkeydown="if(event.key==='Enter')send()">
+  <button id="btn" onclick="send()">Send</button>
+</div>
+
+<script>
+const chat = document.getElementById("chat");
+const btn = document.getElementById("btn");
+const urlBox = document.getElementById("url");
+
+function onModeChange() {
+  const mode = document.getElementById("mode").value;
+  if (mode === "api") {
+    urlBox.value = "http://localhost:8000/chat";
+  } else {
+    // production webhook url (workflow must be active). For test mode use /webhook-test/
+    urlBox.value = "http://localhost:5678/webhook/travel-agent";
+  }
+}
+
+function addMsg(text, who, meta) {
+  const div = document.createElement("div");
+  div.className = "msg " + who;
+  div.textContent = text;
+  if (meta) {
+    const m = document.createElement("div");
+    m.className = "meta";
+    m.textContent = meta;
+    div.appendChild(m);
+  }
+  chat.appendChild(div);
+  chat.scrollTop = chat.scrollHeight;
+}
+
+// n8n sometimes returns the payload wrapped in an array or under a key,
+// so we try a couple of shapes before giving up
+function normalize(data) {
+  if (Array.isArray(data)) data = data[0] || {};
+  if (data && data.response) return data;
+  if (data && data.body && data.body.response) return data.body;
+  if (data && data.json && data.json.response) return data.json;
+  return data || {};
+}
+
+async function send() {
+  const input = document.getElementById("input");
+  const sid = document.getElementById("sid").value || "demo";
+  const text = input.value.trim();
+  if (!text) return;
+
+  addMsg(text, "user");
+  input.value = "";
+  btn.disabled = true;
+  addMsg("thinking...", "bot");
+
+  try {
+    const r = await fetch(urlBox.value, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ session_id: sid, message: text })
+    });
+    const raw = await r.json();
+    const data = normalize(raw);
+    chat.lastChild.remove(); // remove "thinking..."
+
+    let meta = "";
+    if (data.tools_used || data.metrics) {
+      const tools = (data.tools_used || []).join(", ") || "none";
+      const m = data.metrics || {};
+      meta = `tools: ${tools}` +
+             (m.llm_time ? ` | llm: ${m.llm_time}s | tools: ${m.tool_time}s | total: ${m.total_time}s` : "");
+    }
+    addMsg(data.response || JSON.stringify(raw), "bot", meta);
+  } catch (e) {
+    chat.lastChild.remove();
+    addMsg("Error: " + e.message + "\n(check that the API/n8n is running and CORS is allowed)", "bot");
+  }
+  btn.disabled = false;
+}
+</script>
+
+</body>
+</html>
